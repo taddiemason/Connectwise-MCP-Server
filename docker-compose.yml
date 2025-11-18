@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  connectwise-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: connectwise-mcp-server
+    environment:
+      - CW_COMPANY_ID=${CW_COMPANY_ID}
+      - CW_PUBLIC_KEY=${CW_PUBLIC_KEY}
+      - CW_PRIVATE_KEY=${CW_PRIVATE_KEY}
+      - CW_API_URL=${CW_API_URL:-https://api-na.myconnectwise.net}
+      - CW_API_VERSION=${CW_API_VERSION:-v2023.2}
+      - CW_CLIENT_ID=${CW_CLIENT_ID:-mcp-connectwise-server}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    networks:
+      - connectwise-network
+    restart: unless-stopped
+
+  mcp-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.bridge
+    container_name: connectwise-mcp-bridge
+    ports:
+      - "${MCP_PORT:-3002}:3002"
+    environment:
+      - CW_COMPANY_ID=${CW_COMPANY_ID}
+      - CW_PUBLIC_KEY=${CW_PUBLIC_KEY}
+      - CW_PRIVATE_KEY=${CW_PRIVATE_KEY}
+      - CW_API_URL=${CW_API_URL:-https://api-na.myconnectwise.net}
+      - CW_API_VERSION=${CW_API_VERSION:-v2023.2}
+      - CW_CLIENT_ID=${CW_CLIENT_ID:-mcp-connectwise-server}
+      - MCP_PORT=${MCP_PORT:-3002}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    networks:
+      - connectwise-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  connectwise-network:
+    driver: bridge
