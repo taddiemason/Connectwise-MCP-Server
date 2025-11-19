@@ -218,7 +218,7 @@ ls -la .env
 
 ### Test 2: Start the Server
 ```bash
-./setup.sh
+./Setup.sh
 # Select option 1 to start
 ```
 
@@ -349,7 +349,7 @@ Before starting the server, verify you have:
 - [ ] Docker installed and running
 - [ ] Port 3002 available (or changed in config)
 
-**All set?** Run `./setup.sh` and select option 1 to start! 🚀
+**All set?** Run `./Setup.sh` and select option 1 to start! 🚀
 
 ---
 

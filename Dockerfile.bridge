@@ -2,15 +2,18 @@ FROM node:18-slim
 
 WORKDIR /app
 
-# Install Python for MCP server
+# Install Python and curl for MCP server and healthcheck
 RUN apt-get update && \
-    apt-get install -y python3 python3-pip && \
+    apt-get install -y python3 python3-pip curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Node.js dependencies
-RUN npm install express cors
+# Copy package files
+COPY package.json .
 
-# Copy files
+# Install Node.js dependencies
+RUN npm install
+
+# Copy application files
 COPY bridge-server.js .
 COPY connectwise_mcp.py .
 COPY requirements.txt .

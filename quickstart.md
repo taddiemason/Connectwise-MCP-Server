@@ -32,8 +32,8 @@ This guide will get you up and running in 5 minutes!
 
 Option A - Using the setup script:
 ```bash
-chmod +x setup.sh
-./setup.sh
+chmod +x Setup.sh
+./Setup.sh
 # Select option 1
 ```
 

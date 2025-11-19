@@ -91,8 +91,8 @@ Important: For read-only access, ensure the API member only has read permissions
 4. Start the Server
 Using the setup script (recommended):
 
-chmod +x setup.sh
-./setup.sh
+chmod +x Setup.sh
+./Setup.sh
 Select option 1 to start the server.
 
 Or manually with Docker Compose:
@@ -199,7 +199,7 @@ For on-premise installations, use your server URL.
 
  Docker Management
 Using the Setup Script
-./setup.sh
+./Setup.sh
 Options:
 
 Start ConnectWise MCP Server
@@ -281,7 +281,7 @@ ConnectWise-MCP-Server/
 ├── connectwise_tools.py        # OpenWebUI Tool (upload to OpenWebUI)
 ├── requirements.txt            # Python dependencies
 ├── .env.example                # Environment template
-├── setup.sh                    # Setup and management script
+├── Setup.sh                    # Setup and management script
 └── README.md                   # This file
  Security Best Practices
 Never commit .env file with real credentials to version control
