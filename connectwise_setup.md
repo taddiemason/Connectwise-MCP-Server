@@ -353,4 +353,4 @@ Before starting the server, verify you have:
 
 ---
 
-Need help? Check the main [README.md](README.md) or [QUICKSTART.md](QUICKSTART.md)
+Need help? Check the main [README.md](README.md) or [quickstart.md](quickstart.md)
