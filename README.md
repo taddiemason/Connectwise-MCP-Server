@@ -10,10 +10,10 @@ The server consists of two components:
 2. **MCP Bridge** - Node.js Express server exposing an HTTP API for OpenWebUI
 
 ```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐     ┌────────────────┐
-│   OpenWebUI     │◄────►│   MCP Bridge     │◄────►│ ConnectWise    │◄────►│ ConnectWise   │
-│     Tools       │ HTTP │   (Port 3002)    │Docker│  MCP Server    │HTTPS │   Manage API  │
-└─────────────────┘     └──────────────────┘     └─────────────────┘     └────────────────┘
+┌─────────────────┐     ┌──────────────────┐      ┌─────────────────┐      ┌────────────────┐
+│   OpenWebUI     │◄───►│   MCP Bridge     │◄───► │ ConnectWise     │◄────►│ ConnectWise    │
+│     Tools       │ HTTP│   (Port 3002)    │Docker│  MCP Server     │HTTPS │   Manage API   │
+└─────────────────┘     └──────────────────┘      └─────────────────┘      └────────────────┘
 ```
 
 ## Key Features
@@ -58,7 +58,7 @@ The server consists of two components:
 
 ### 1. Clone Repository
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/taddiemason/Connectwise-MCP-Server
 cd ConnectWise-MCP-Server
 ```
 
