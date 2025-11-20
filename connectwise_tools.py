@@ -2,7 +2,7 @@
 title: ConnectWise Tools
 description: Read-only access to ConnectWise Manage via MCP
 author: AI Assistant
-version: 1.0.0
+version: 1.1.0
 license: MIT
 requirements: requests
 """
@@ -324,7 +324,7 @@ class Tools:
     ) -> str:
         """
         Search and retrieve team members from ConnectWise.
-        
+
         :param conditions: Filter conditions (e.g., 'inactiveFlag=false')
         :param order_by: Field to order by
         :param page: Page number (1-based)
@@ -339,6 +339,413 @@ class Tools:
             args["conditions"] = conditions
         if order_by:
             args["orderBy"] = order_by
-            
+
         result = self._execute_tool("connectwise_get_members", args)
+        return json.dumps(result, indent=2)
+
+    # IT Asset Management
+    def get_configurations(
+        self,
+        conditions: Optional[str] = None,
+        order_by: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 25
+    ) -> str:
+        """
+        Search and retrieve IT configurations/assets from ConnectWise.
+
+        :param conditions: Filter conditions (e.g., 'company/identifier="ACME"' or 'type/name="Server"')
+        :param order_by: Field to order by
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with configuration data
+        """
+        args = {
+            "page": page,
+            "pageSize": page_size
+        }
+        if conditions:
+            args["conditions"] = conditions
+        if order_by:
+            args["orderBy"] = order_by
+
+        result = self._execute_tool("connectwise_get_configurations", args)
+        return json.dumps(result, indent=2)
+
+    def get_configuration(self, configuration_id: int) -> str:
+        """
+        Get a specific configuration/asset by ID.
+
+        :param configuration_id: Configuration ID
+        :return: JSON string with configuration data
+        """
+        result = self._execute_tool("connectwise_get_configuration", {"configuration_id": configuration_id})
+        return json.dumps(result, indent=2)
+
+    def get_configuration_types(
+        self,
+        conditions: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 100
+    ) -> str:
+        """
+        Get all configuration types for categorizing IT assets.
+
+        :param conditions: Filter conditions
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with configuration type data
+        """
+        args = {
+            "page": page,
+            "pageSize": page_size
+        }
+        if conditions:
+            args["conditions"] = conditions
+
+        result = self._execute_tool("connectwise_get_configuration_types", args)
+        return json.dumps(result, indent=2)
+
+    def get_company_sites(
+        self,
+        company_id: int,
+        page: int = 1,
+        page_size: int = 25
+    ) -> str:
+        """
+        Get sites/locations for a specific company.
+
+        :param company_id: Company ID
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with company site data
+        """
+        args = {
+            "company_id": company_id,
+            "page": page,
+            "pageSize": page_size
+        }
+
+        result = self._execute_tool("connectwise_get_company_sites", args)
+        return json.dumps(result, indent=2)
+
+    # Reference Data - Company
+    def get_company_types(
+        self,
+        conditions: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 100
+    ) -> str:
+        """
+        Get all company types for categorizing companies.
+
+        :param conditions: Filter conditions
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with company type data
+        """
+        args = {
+            "page": page,
+            "pageSize": page_size
+        }
+        if conditions:
+            args["conditions"] = conditions
+
+        result = self._execute_tool("connectwise_get_company_types", args)
+        return json.dumps(result, indent=2)
+
+    def get_company_statuses(
+        self,
+        conditions: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 100
+    ) -> str:
+        """
+        Get all company statuses for tracking company state.
+
+        :param conditions: Filter conditions
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with company status data
+        """
+        args = {
+            "page": page,
+            "pageSize": page_size
+        }
+        if conditions:
+            args["conditions"] = conditions
+
+        result = self._execute_tool("connectwise_get_company_statuses", args)
+        return json.dumps(result, indent=2)
+
+    # Reference Data - Tickets
+    def get_ticket_priorities(
+        self,
+        conditions: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 100
+    ) -> str:
+        """
+        Get all ticket priorities for categorizing urgency.
+
+        :param conditions: Filter conditions
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with ticket priority data
+        """
+        args = {
+            "page": page,
+            "pageSize": page_size
+        }
+        if conditions:
+            args["conditions"] = conditions
+
+        result = self._execute_tool("connectwise_get_ticket_priorities", args)
+        return json.dumps(result, indent=2)
+
+    def get_ticket_sources(
+        self,
+        conditions: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 100
+    ) -> str:
+        """
+        Get all ticket sources for tracking how tickets are created.
+
+        :param conditions: Filter conditions
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with ticket source data
+        """
+        args = {
+            "page": page,
+            "pageSize": page_size
+        }
+        if conditions:
+            args["conditions"] = conditions
+
+        result = self._execute_tool("connectwise_get_ticket_sources", args)
+        return json.dumps(result, indent=2)
+
+    # Reference Data - Contacts
+    def get_contact_types(
+        self,
+        conditions: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 100
+    ) -> str:
+        """
+        Get all contact types for categorizing contacts.
+
+        :param conditions: Filter conditions
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with contact type data
+        """
+        args = {
+            "page": page,
+            "pageSize": page_size
+        }
+        if conditions:
+            args["conditions"] = conditions
+
+        result = self._execute_tool("connectwise_get_contact_types", args)
+        return json.dumps(result, indent=2)
+
+    # Finance & Billing
+    def get_invoices(
+        self,
+        conditions: Optional[str] = None,
+        order_by: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 25
+    ) -> str:
+        """
+        Search and retrieve invoices from ConnectWise.
+
+        :param conditions: Filter conditions (e.g., 'company/identifier="ACME"' or 'status="Open"')
+        :param order_by: Field to order by
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with invoice data
+        """
+        args = {
+            "page": page,
+            "pageSize": page_size
+        }
+        if conditions:
+            args["conditions"] = conditions
+        if order_by:
+            args["orderBy"] = order_by
+
+        result = self._execute_tool("connectwise_get_invoices", args)
+        return json.dumps(result, indent=2)
+
+    def get_expense_entries(
+        self,
+        conditions: Optional[str] = None,
+        order_by: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 25
+    ) -> str:
+        """
+        Search and retrieve expense entries from ConnectWise.
+
+        :param conditions: Filter conditions (e.g., 'member/identifier="john" and date > [2024-01-01]')
+        :param order_by: Field to order by
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with expense entry data
+        """
+        args = {
+            "page": page,
+            "pageSize": page_size
+        }
+        if conditions:
+            args["conditions"] = conditions
+        if order_by:
+            args["orderBy"] = order_by
+
+        result = self._execute_tool("connectwise_get_expense_entries", args)
+        return json.dumps(result, indent=2)
+
+    def get_billing_cycles(
+        self,
+        conditions: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 100
+    ) -> str:
+        """
+        Get all billing cycles for recurring billing.
+
+        :param conditions: Filter conditions
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with billing cycle data
+        """
+        args = {
+            "page": page,
+            "pageSize": page_size
+        }
+        if conditions:
+            args["conditions"] = conditions
+
+        result = self._execute_tool("connectwise_get_billing_cycles", args)
+        return json.dumps(result, indent=2)
+
+    def get_agreement_additions(
+        self,
+        agreement_id: int,
+        page: int = 1,
+        page_size: int = 25
+    ) -> str:
+        """
+        Get additions/add-ons for a specific agreement.
+
+        :param agreement_id: Agreement ID
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with agreement addition data
+        """
+        args = {
+            "agreement_id": agreement_id,
+            "page": page,
+            "pageSize": page_size
+        }
+
+        result = self._execute_tool("connectwise_get_agreement_additions", args)
+        return json.dumps(result, indent=2)
+
+    # Service Desk Enhancements
+    def get_service_boards(
+        self,
+        conditions: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 100
+    ) -> str:
+        """
+        Get all service boards for organizing tickets.
+
+        :param conditions: Filter conditions
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with service board data
+        """
+        args = {
+            "page": page,
+            "pageSize": page_size
+        }
+        if conditions:
+            args["conditions"] = conditions
+
+        result = self._execute_tool("connectwise_get_service_boards", args)
+        return json.dumps(result, indent=2)
+
+    def get_board_statuses(
+        self,
+        board_id: int,
+        page: int = 1,
+        page_size: int = 100
+    ) -> str:
+        """
+        Get all statuses for a specific service board.
+
+        :param board_id: Board ID
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with board status data
+        """
+        args = {
+            "board_id": board_id,
+            "page": page,
+            "pageSize": page_size
+        }
+
+        result = self._execute_tool("connectwise_get_board_statuses", args)
+        return json.dumps(result, indent=2)
+
+    def get_ticket_tasks(
+        self,
+        ticket_id: int,
+        page: int = 1,
+        page_size: int = 25
+    ) -> str:
+        """
+        Get tasks/checklist items for a specific ticket.
+
+        :param ticket_id: Ticket ID
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with ticket task data
+        """
+        args = {
+            "ticket_id": ticket_id,
+            "page": page,
+            "pageSize": page_size
+        }
+
+        result = self._execute_tool("connectwise_get_ticket_tasks", args)
+        return json.dumps(result, indent=2)
+
+    def get_ticket_schedules(
+        self,
+        ticket_id: int,
+        page: int = 1,
+        page_size: int = 25
+    ) -> str:
+        """
+        Get schedule entries for a specific ticket.
+
+        :param ticket_id: Ticket ID
+        :param page: Page number (1-based)
+        :param page_size: Results per page (max 1000)
+        :return: JSON string with ticket schedule data
+        """
+        args = {
+            "ticket_id": ticket_id,
+            "page": page,
+            "pageSize": page_size
+        }
+
+        result = self._execute_tool("connectwise_get_ticket_schedules", args)
         return json.dumps(result, indent=2)

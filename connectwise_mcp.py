@@ -405,6 +405,417 @@ async def list_tools() -> list[Tool]:
                 }
             }
         ),
+
+        # IT Asset Management - Configuration endpoints
+        Tool(
+            name="connectwise_get_configurations",
+            description="Search and retrieve IT configurations/assets. Supports filtering with conditions.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "conditions": {
+                        "type": "string",
+                        "description": "ConnectWise API conditions (e.g., 'company/identifier=\"ACME\"' or 'type/name=\"Server\"')"
+                    },
+                    "orderBy": {
+                        "type": "string",
+                        "description": "Field to order by"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 25
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="connectwise_get_configuration",
+            description="Get a specific configuration/asset by ID",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "configuration_id": {
+                        "type": "integer",
+                        "description": "Configuration ID"
+                    }
+                },
+                "required": ["configuration_id"]
+            }
+        ),
+        Tool(
+            name="connectwise_get_configuration_types",
+            description="Get all configuration types for categorizing IT assets",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "conditions": {
+                        "type": "string",
+                        "description": "ConnectWise API conditions"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 100
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="connectwise_get_company_sites",
+            description="Get sites/locations for a specific company",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "company_id": {
+                        "type": "integer",
+                        "description": "Company ID"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 25
+                    }
+                },
+                "required": ["company_id"]
+            }
+        ),
+
+        # Reference Data - Company endpoints
+        Tool(
+            name="connectwise_get_company_types",
+            description="Get all company types for categorizing companies",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "conditions": {
+                        "type": "string",
+                        "description": "ConnectWise API conditions"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 100
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="connectwise_get_company_statuses",
+            description="Get all company statuses for tracking company state",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "conditions": {
+                        "type": "string",
+                        "description": "ConnectWise API conditions"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 100
+                    }
+                }
+            }
+        ),
+
+        # Reference Data - Ticket endpoints
+        Tool(
+            name="connectwise_get_ticket_priorities",
+            description="Get all ticket priorities for categorizing urgency",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "conditions": {
+                        "type": "string",
+                        "description": "ConnectWise API conditions"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 100
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="connectwise_get_ticket_sources",
+            description="Get all ticket sources for tracking how tickets are created",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "conditions": {
+                        "type": "string",
+                        "description": "ConnectWise API conditions"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 100
+                    }
+                }
+            }
+        ),
+
+        # Reference Data - Contact endpoints
+        Tool(
+            name="connectwise_get_contact_types",
+            description="Get all contact types for categorizing contacts",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "conditions": {
+                        "type": "string",
+                        "description": "ConnectWise API conditions"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 100
+                    }
+                }
+            }
+        ),
+
+        # Finance & Billing endpoints
+        Tool(
+            name="connectwise_get_invoices",
+            description="Search and retrieve invoices. Supports filtering with conditions.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "conditions": {
+                        "type": "string",
+                        "description": "ConnectWise API conditions (e.g., 'company/identifier=\"ACME\"' or 'status=\"Open\"')"
+                    },
+                    "orderBy": {
+                        "type": "string",
+                        "description": "Field to order by"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 25
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="connectwise_get_expense_entries",
+            description="Search and retrieve expense entries. Supports filtering with conditions.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "conditions": {
+                        "type": "string",
+                        "description": "ConnectWise API conditions (e.g., 'member/identifier=\"john\" and date > [2024-01-01]')"
+                    },
+                    "orderBy": {
+                        "type": "string",
+                        "description": "Field to order by"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 25
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="connectwise_get_billing_cycles",
+            description="Get all billing cycles for recurring billing",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "conditions": {
+                        "type": "string",
+                        "description": "ConnectWise API conditions"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 100
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="connectwise_get_agreement_additions",
+            description="Get additions/add-ons for a specific agreement",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "agreement_id": {
+                        "type": "integer",
+                        "description": "Agreement ID"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 25
+                    }
+                },
+                "required": ["agreement_id"]
+            }
+        ),
+
+        # Service Desk Enhancement endpoints
+        Tool(
+            name="connectwise_get_service_boards",
+            description="Get all service boards for organizing tickets",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "conditions": {
+                        "type": "string",
+                        "description": "ConnectWise API conditions"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 100
+                    }
+                }
+            }
+        ),
+        Tool(
+            name="connectwise_get_board_statuses",
+            description="Get all statuses for a specific service board",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "board_id": {
+                        "type": "integer",
+                        "description": "Board ID"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 100
+                    }
+                },
+                "required": ["board_id"]
+            }
+        ),
+        Tool(
+            name="connectwise_get_ticket_tasks",
+            description="Get tasks/checklist items for a specific ticket",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ticket_id": {
+                        "type": "integer",
+                        "description": "Ticket ID"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 25
+                    }
+                },
+                "required": ["ticket_id"]
+            }
+        ),
+        Tool(
+            name="connectwise_get_ticket_schedules",
+            description="Get schedule entries for a specific ticket",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ticket_id": {
+                        "type": "integer",
+                        "description": "Ticket ID"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number (1-based)",
+                        "default": 1
+                    },
+                    "pageSize": {
+                        "type": "integer",
+                        "description": "Results per page (max 1000)",
+                        "default": 25
+                    }
+                },
+                "required": ["ticket_id"]
+            }
+        ),
     ]
 
 @app.call_tool()
@@ -486,7 +897,103 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
             params = _build_params(arguments)
             data = await cw_client.get("system/members", params=params)
             return [TextContent(type="text", text=json.dumps(data, indent=2))]
-        
+
+        # IT Asset Management - Configurations
+        elif name == "connectwise_get_configurations":
+            params = _build_params(arguments)
+            data = await cw_client.get("company/configurations", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        elif name == "connectwise_get_configuration":
+            configuration_id = arguments.get("configuration_id")
+            data = await cw_client.get(f"company/configurations/{configuration_id}")
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        elif name == "connectwise_get_configuration_types":
+            params = _build_params(arguments)
+            data = await cw_client.get("company/configurations/types", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        elif name == "connectwise_get_company_sites":
+            company_id = arguments.get("company_id")
+            params = _build_params(arguments)
+            data = await cw_client.get(f"company/companies/{company_id}/sites", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        # Reference Data - Company
+        elif name == "connectwise_get_company_types":
+            params = _build_params(arguments)
+            data = await cw_client.get("company/companies/types", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        elif name == "connectwise_get_company_statuses":
+            params = _build_params(arguments)
+            data = await cw_client.get("company/companies/statuses", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        # Reference Data - Tickets
+        elif name == "connectwise_get_ticket_priorities":
+            params = _build_params(arguments)
+            data = await cw_client.get("service/priorities", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        elif name == "connectwise_get_ticket_sources":
+            params = _build_params(arguments)
+            data = await cw_client.get("service/sources", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        # Reference Data - Contacts
+        elif name == "connectwise_get_contact_types":
+            params = _build_params(arguments)
+            data = await cw_client.get("company/contacts/types", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        # Finance & Billing
+        elif name == "connectwise_get_invoices":
+            params = _build_params(arguments)
+            data = await cw_client.get("finance/invoices", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        elif name == "connectwise_get_expense_entries":
+            params = _build_params(arguments)
+            data = await cw_client.get("expense/entries", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        elif name == "connectwise_get_billing_cycles":
+            params = _build_params(arguments)
+            data = await cw_client.get("finance/billingCycles", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        elif name == "connectwise_get_agreement_additions":
+            agreement_id = arguments.get("agreement_id")
+            params = _build_params(arguments)
+            data = await cw_client.get(f"finance/agreements/{agreement_id}/additions", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        # Service Desk Enhancements
+        elif name == "connectwise_get_service_boards":
+            params = _build_params(arguments)
+            data = await cw_client.get("service/boards", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        elif name == "connectwise_get_board_statuses":
+            board_id = arguments.get("board_id")
+            params = _build_params(arguments)
+            data = await cw_client.get(f"service/boards/{board_id}/statuses", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        elif name == "connectwise_get_ticket_tasks":
+            ticket_id = arguments.get("ticket_id")
+            params = _build_params(arguments)
+            data = await cw_client.get(f"service/tickets/{ticket_id}/tasks", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+        elif name == "connectwise_get_ticket_schedules":
+            ticket_id = arguments.get("ticket_id")
+            params = _build_params(arguments)
+            data = await cw_client.get(f"service/tickets/{ticket_id}/scheduleentries", params=params)
+            return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
         else:
             return [TextContent(
                 type="text",
