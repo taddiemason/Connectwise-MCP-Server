@@ -35,6 +35,7 @@ The server consists of two components:
 
 **Agreements & Time Tracking:**
 - Search agreements and contracts
+- View agreement additions and add-ons
 - View detailed time tracking data
 - Filter time entries by member, date, or ticket
 
@@ -42,6 +43,30 @@ The server consists of two components:
 - Search projects and track progress
 - View activities and tasks
 - Access team member information
+
+**IT Asset Management:**
+- Search and view IT configurations/assets
+- Retrieve configuration types for asset categorization
+- Access company sites and locations
+- Track hardware and software inventory
+
+**Finance & Billing:**
+- Search and retrieve invoices
+- View expense entries and reports
+- Access billing cycles for recurring billing
+- Review agreement additions and billing details
+
+**Reference Data:**
+- Company types and statuses for categorization
+- Ticket priorities and sources
+- Contact types for organization
+- Service board configurations and statuses
+
+**Service Desk Enhancements:**
+- View service boards and workflows
+- Access board-specific statuses
+- Retrieve ticket tasks and checklists
+- View scheduled work for tickets
 
 **AI Integration:**
 - Natural language command support in OpenWebUI
@@ -156,21 +181,30 @@ Expected response:
 **Company Tools:**
 - `get_companies()` - Search companies with advanced filtering
 - `get_company()` - Get specific company details
+- `get_company_sites()` - Get sites/locations for a specific company
+- `get_company_types()` - Get all company types for categorization
+- `get_company_statuses()` - Get all company statuses
 
 **Ticket Tools:**
 - `get_tickets()` - Search tickets with conditions
 - `get_ticket()` - Get specific ticket details
 - `get_ticket_notes()` - Retrieve ticket notes and history
+- `get_ticket_tasks()` - Get tasks/checklist items for a ticket
+- `get_ticket_schedules()` - Get scheduled work for a ticket
+- `get_ticket_priorities()` - Get all ticket priorities
+- `get_ticket_sources()` - Get all ticket sources
 
 **Contact Tools:**
 - `get_contacts()` - Search contacts
 - `get_contact()` - Get specific contact details
+- `get_contact_types()` - Get all contact types
 
 **Sales Tools:**
 - `get_opportunities()` - Search sales opportunities
 
 **Agreement Tools:**
 - `get_agreements()` - Search agreements and contracts
+- `get_agreement_additions()` - Get add-ons for a specific agreement
 
 **Time Entry Tools:**
 - `get_time_entries()` - Search time tracking data
@@ -184,11 +218,27 @@ Expected response:
 **Member Tools:**
 - `get_members()` - Search team members
 
+**IT Asset Management Tools:**
+- `get_configurations()` - Search IT configurations/assets
+- `get_configuration()` - Get specific configuration by ID
+- `get_configuration_types()` - Get all configuration types
+
+**Finance & Billing Tools:**
+- `get_invoices()` - Search and retrieve invoices
+- `get_expense_entries()` - Search expense entries
+- `get_billing_cycles()` - Get all billing cycles
+
+**Service Desk Tools:**
+- `get_service_boards()` - Get all service boards
+- `get_board_statuses()` - Get statuses for a specific board
+
 All tools support pagination and ConnectWise condition syntax for advanced filtering.
 
 ## Usage Examples
 
 In OpenWebUI, communicate naturally:
+
+**General Queries:**
 - "Show me all open tickets for ACME Corp"
 - "Find all companies with 'Tech' in their name"
 - "Get details for ticket #12345"
@@ -197,6 +247,30 @@ In OpenWebUI, communicate naturally:
 - "Find contacts at Microsoft"
 - "What projects are currently active?"
 - "Show me all agreements expiring this month"
+
+**IT Asset Management:**
+- "Show me all servers for ACME Corp"
+- "What configurations are assigned to ticket #5678?"
+- "List all company sites for XYZ Corporation"
+- "What configuration types do we have?"
+
+**Finance & Billing:**
+- "Show me all open invoices for this month"
+- "What are the expense entries for John this week?"
+- "List all billing cycles"
+- "What add-ons are included in agreement #123?"
+
+**Service Desk:**
+- "What service boards do we have?"
+- "Show me all statuses for the Help Desk board"
+- "What tasks are on ticket #9999?"
+- "Show scheduled work for ticket #1234"
+
+**Reference Data:**
+- "What company types are available?"
+- "List all ticket priorities"
+- "Show me all contact types"
+- "What ticket sources do we track?"
 
 The AI will automatically call the appropriate ConnectWise tool functions to complete your request.
 
@@ -419,9 +493,17 @@ MIT License - See LICENSE file for details
 
 ## Version
 
-**Current Version:** 1.0.0
+**Current Version:** 1.1.0
 
 ### Changelog
+
+**Version 1.1.0 (Enhanced Feature Set)**
+- Added IT Asset Management (configurations, configuration types, company sites)
+- Added Finance & Billing (invoices, expense entries, billing cycles, agreement additions)
+- Added Reference Data endpoints (company types/statuses, ticket priorities/sources, contact types)
+- Added Service Desk Enhancements (service boards, board statuses, ticket tasks, ticket schedules)
+- Total of 18 new read-only tools
+- Enhanced documentation with new usage examples
 
 **Version 1.0.0 (Initial Release)**
 - Read-only access to ConnectWise Manage
