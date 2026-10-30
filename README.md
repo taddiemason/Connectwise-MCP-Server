@@ -167,32 +167,47 @@ Bridge available at: **http://localhost:3002**
 
 ### 5a. Use it from Claude Code or Claude Desktop
 
-No Docker needed — stdio is the default transport:
+No Docker needed — stdio is the default transport. Install into a venv so the
+interpreter you point at definitely has the dependencies:
 
 ```bash
-pip install -r requirements.txt
+python -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt    # .venv\Scripts\python.exe on Windows
 ```
 
-Then register it. For Claude Code, in `.mcp.json`:
+**Claude Code**, one command:
 
-```json
-{
-  "mcpServers": {
-    "connectwise": {
-      "command": "python",
-      "args": ["/path/to/Connectwise-MCP-Server/connectwise_mcp.py"],
-      "env": {
-        "CW_COMPANY_ID": "your_company_id",
-        "CW_PUBLIC_KEY": "your_public_key",
-        "CW_PRIVATE_KEY": "your_private_key",
-        "CW_API_URL": "https://api-na.myconnectwise.net"
-      }
-    }
-  }
-}
+```bash
+claude mcp add connectwise \
+  -e CW_COMPANY_ID=your_company_id \
+  -e CW_PUBLIC_KEY=your_public_key \
+  -e CW_PRIVATE_KEY=your_private_key \
+  -- /absolute/path/to/.venv/bin/python /absolute/path/to/connectwise_mcp.py
 ```
 
-Claude Desktop takes the same block in `claude_desktop_config.json`.
+Check it took:
+
+```bash
+claude mcp list        # connectwise: ... - ✔ Connected
+```
+
+**Claude Desktop**, or Claude Code via file: copy `.mcp.json.example` to
+`.mcp.json` and fill it in. Claude Desktop takes the same `mcpServers` block in
+`claude_desktop_config.json`.
+
+Two things that bite:
+
+- **Use absolute paths, and point `command` at the venv's Python.** The MCP
+  client does not inherit your shell, your `PATH` or your activated venv. A bare
+  `python` will often be a different interpreter without `fastmcp` installed.
+- **That config file holds live API keys in plaintext** — the same keys that
+  read every client's tickets, contacts and agreements. `.mcp.json` and
+  `claude_desktop_config.json` are both gitignored here for that reason. Commit
+  the `.example`, never the real one.
+
+Credentials are only needed to *call* a tool. The server starts and lists its 30
+tools without them, and an uncredentialled call fails with a message naming the
+variables that are missing rather than a stack trace.
 
 ### 5b. Add Tool to OpenWebUI
 

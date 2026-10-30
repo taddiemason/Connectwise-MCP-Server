@@ -647,7 +647,11 @@ def main() -> None:
         logger.info("Serving HTTP on 0.0.0.0:%s", port)
         mcp.run(transport="http", host="0.0.0.0", port=port)
     else:
-        mcp.run()
+        # On stdio, stdout IS the JSON-RPC stream -- one stray print and the
+        # client sees a protocol error instead of a server. Banner off
+        # explicitly rather than relying on the framework defaulting it to
+        # stderr. Logging already goes to stderr via basicConfig.
+        mcp.run(show_banner=False)
 
 
 if __name__ == "__main__":

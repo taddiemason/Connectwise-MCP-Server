@@ -1,0 +1,31 @@
+{
+  "_comment": [
+    "Copy to .mcp.json and fill in your keys. .mcp.json is gitignored because",
+    "this file format holds live ConnectWise API credentials in plaintext --",
+    "the same keys that read every client's tickets, contacts and agreements.",
+    "",
+    "Claude Code reads .mcp.json from the project root. Claude Desktop takes",
+    "the same mcpServers block in claude_desktop_config.json.",
+    "",
+    "`command` must be a Python that has this project's requirements installed.",
+    "Use the venv interpreter directly if you installed into one:",
+    "  Windows  .venv/Scripts/python.exe",
+    "  macOS    .venv/bin/python",
+    "An absolute path is safest -- the MCP client does not inherit your shell."
+  ],
+  "mcpServers": {
+    "connectwise": {
+      "command": "/absolute/path/to/Connectwise-MCP-Server/.venv/bin/python",
+      "args": ["/absolute/path/to/Connectwise-MCP-Server/connectwise_mcp.py"],
+      "env": {
+        "CW_COMPANY_ID": "your_company_id_here",
+        "CW_PUBLIC_KEY": "your_public_key_here",
+        "CW_PRIVATE_KEY": "your_private_key_here",
+        "CW_API_URL": "https://api-na.myconnectwise.net",
+        "CW_API_VERSION": "v2023.2",
+        "CW_CLIENT_ID": "mcp-connectwise-server",
+        "LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}

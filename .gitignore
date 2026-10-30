@@ -1,6 +1,12 @@
 # Environment variables
 .env
 
+# MCP client config. Holds ConnectWise API keys in plaintext -- the same keys
+# that read every client's tickets, contacts and agreements. Commit the
+# .example instead.
+.mcp.json
+claude_desktop_config.json
+
 # Python
 __pycache__/
 *.py[cod]
