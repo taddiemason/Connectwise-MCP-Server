@@ -73,27 +73,10 @@ restart_server() {
 }
 
 view_logs() {
-    echo "Select logs to view:"
-    echo "1. All logs"
-    echo "2. Bridge server logs only"
-    echo "3. MCP server logs only"
-    echo ""
-    read -p "Enter choice [1-3]: " log_choice
-    
-    case $log_choice in
-        1)
-            docker-compose logs -f
-            ;;
-        2)
-            docker-compose logs -f mcp-bridge
-            ;;
-        3)
-            docker-compose logs -f connectwise-mcp-server
-            ;;
-        *)
-            echo -e "${RED}Invalid choice${NC}"
-            ;;
-    esac
+    # One service now. The old menu offered "bridge" and "MCP server" because
+    # there were two containers; the Node bridge is gone and the second was a
+    # stdio server with nothing on stdin, restart-looping to no purpose.
+    docker-compose logs -f connectwise-mcp
 }
 
 check_status() {

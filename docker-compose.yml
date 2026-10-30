@@ -1,28 +1,14 @@
-version: '3.8'
+# One service. There used to be two: a Node bridge that exposed HTTP, and a
+# "connectwise-mcp-server" container that ran a stdio MCP server with nothing
+# attached to stdin -- which meant it read EOF, exited, and was restarted
+# forever by `restart: unless-stopped` while doing no work at all.
+#
+# FastMCP serves HTTP itself, so the bridge is gone and this is the whole thing.
 
 services:
-  connectwise-mcp-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: connectwise-mcp-server
-    environment:
-      - CW_COMPANY_ID=${CW_COMPANY_ID}
-      - CW_PUBLIC_KEY=${CW_PUBLIC_KEY}
-      - CW_PRIVATE_KEY=${CW_PRIVATE_KEY}
-      - CW_API_URL=${CW_API_URL:-https://api-na.myconnectwise.net}
-      - CW_API_VERSION=${CW_API_VERSION:-v2023.2}
-      - CW_CLIENT_ID=${CW_CLIENT_ID:-mcp-connectwise-server}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    networks:
-      - connectwise-network
-    restart: unless-stopped
-
-  mcp-bridge:
-    build:
-      context: .
-      dockerfile: Dockerfile.bridge
-    container_name: connectwise-mcp-bridge
+  connectwise-mcp:
+    build: .
+    container_name: connectwise-mcp
     ports:
       - "${MCP_PORT:-3002}:3002"
     environment:
@@ -32,17 +18,14 @@ services:
       - CW_API_URL=${CW_API_URL:-https://api-na.myconnectwise.net}
       - CW_API_VERSION=${CW_API_VERSION:-v2023.2}
       - CW_CLIENT_ID=${CW_CLIENT_ID:-mcp-connectwise-server}
-      - MCP_PORT=${MCP_PORT:-3002}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    networks:
-      - connectwise-network
+      # The container serves HTTP. Run the same file without this for stdio,
+      # which is what Claude Code and Claude Desktop want.
+      - MCP_TRANSPORT=http
+      - MCP_PORT=3002
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:3002/health').status==200 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
-
-networks:
-  connectwise-network:
-    driver: bridge

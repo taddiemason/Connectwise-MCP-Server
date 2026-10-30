@@ -1,6 +1,12 @@
 #!/bin/bash
 
-# ConnectWise MCP Server Test Script
+# ConnectWise MCP Server -- LIVE deployment smoke check.
+#
+# This needs real credentials and a running container, so it checks the
+# deployment rather than the code. The code is covered by the offline suite,
+# which needs neither:
+#
+#     pip install -r requirements-dev.txt && pytest
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -50,20 +56,15 @@ else
 fi
 echo ""
 
-# Test 3: Check if containers are running
+# Test 3: Check if the container is running
+# One service now -- the Node bridge is gone and the second container was a
+# stdio server with nothing attached to stdin.
 echo -e "${BLUE}Test 3: Checking container status...${NC}"
-if docker ps | grep -q "connectwise-mcp-bridge"; then
-    echo -e "${GREEN}✓ MCP Bridge container is running${NC}"
+if docker ps | grep -q "connectwise-mcp"; then
+    echo -e "${GREEN}✓ ConnectWise MCP container is running${NC}"
 else
-    echo -e "${YELLOW}⚠ MCP Bridge container is not running${NC}"
-    echo -e "${YELLOW}  Run: docker-compose up -d${NC}"
-fi
-
-if docker ps | grep -q "connectwise-mcp-server"; then
-    echo -e "${GREEN}✓ MCP Server container is running${NC}"
-else
-    echo -e "${YELLOW}⚠ MCP Server container is not running${NC}"
-    echo -e "${YELLOW}  Run: docker-compose up -d${NC}"
+    echo -e "${YELLOW}⚠ Container is not running${NC}"
+    echo -e "${YELLOW}  Run: docker-compose up -d --build${NC}"
 fi
 echo ""
 

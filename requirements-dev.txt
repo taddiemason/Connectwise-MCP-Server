@@ -1,0 +1,6 @@
+# Test dependencies. The suite runs with no ConnectWise credentials and no
+# network -- httpx.MockTransport stands in for the API.
+-r requirements.txt
+
+pytest>=8.0,<9
+pytest-asyncio>=0.24,<2

@@ -2,19 +2,34 @@
 
 ## Overview
 
-The ConnectWise MCP Server is a Docker-based Model Context Protocol (MCP) bridge that enables AI agents to access ConnectWise Manage data through natural language commands. It provides read-only access to your ConnectWise instance, allowing AI-assisted data retrieval and analysis through OpenWebUI.
-
-The server consists of two components:
-
-1. **MCP Server** - Python-based ConnectWise Manage API interface
-2. **MCP Bridge** - Node.js Express server exposing an HTTP API for OpenWebUI
+A Model Context Protocol (MCP) server giving AI agents read-only access to ConnectWise Manage. One Python process serves two transports:
 
 ```
-┌─────────────────┐     ┌──────────────────┐      ┌─────────────────┐      ┌────────────────┐
-│   OpenWebUI     │◄───►│   MCP Bridge     │◄───► │ ConnectWise     │◄────►│ ConnectWise    │
-│     Tools       │ HTTP│   (Port 3002)    │Docker│  MCP Server     │HTTPS │   Manage API   │
-└─────────────────┘     └──────────────────┘      └─────────────────┘      └────────────────┘
+┌──────────────────┐  stdio  ┐
+│  Claude Code /   │─────────┤
+│  Claude Desktop  │         │   ┌──────────────────┐  HTTPS  ┌────────────────┐
+└──────────────────┘         ├──►│   ConnectWise    │────────►│  ConnectWise   │
+┌──────────────────┐  HTTP   │   │   MCP Server     │         │   Manage API   │
+│    OpenWebUI     │─────────┘   └──────────────────┘         └────────────────┘
+└──────────────────┘ :3002
 ```
+
+- **stdio** — add it to Claude Code or Claude Desktop like any other MCP server.
+- **HTTP** — serves OpenWebUI, including a `/v1/tools/execute` route kept for compatibility with tools written against the old Node bridge.
+
+### Changed in 2.0.0
+
+The previous release **did not run**. `requirements.txt` specified `mcp>=1.0.0`; once mcp 2.x shipped it removed the decorator API the server was written against, so a fresh install failed at import with `AttributeError: 'Server' object has no attribute 'list_tools'` and the container could not start.
+
+Fixing that pulled several other things with it:
+
+- **Dependencies are pinned** with upper bounds. The unbounded range was the bug.
+- **The Node bridge is gone.** It spawned a fresh Python process per request, invoked `python` in an image that only installed `python3`, and sent `tools/call` without an MCP `initialize` handshake. FastMCP serves HTTP directly, so all of that went with it.
+- **One container instead of two.** The old `connectwise-mcp-server` service ran a stdio server with nothing attached to stdin, so it exited and was restarted forever while doing no work.
+- **Credentials are no longer needed to import.** The client is built on first use, so the tool list can be inspected and the whole surface tested without keys.
+- **There is now a test suite** that runs with no credentials and no network.
+
+All 30 tool names are unchanged, and `/v1/tools/execute` returns the same shape it used to, so existing OpenWebUI installs keep working.
 
 ## Key Features
 
@@ -150,7 +165,36 @@ docker-compose up -d --build
 
 Bridge available at: **http://localhost:3002**
 
-### 5. Add Tool to OpenWebUI
+### 5a. Use it from Claude Code or Claude Desktop
+
+No Docker needed — stdio is the default transport:
+
+```bash
+pip install -r requirements.txt
+```
+
+Then register it. For Claude Code, in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "connectwise": {
+      "command": "python",
+      "args": ["/path/to/Connectwise-MCP-Server/connectwise_mcp.py"],
+      "env": {
+        "CW_COMPANY_ID": "your_company_id",
+        "CW_PUBLIC_KEY": "your_public_key",
+        "CW_PRIVATE_KEY": "your_private_key",
+        "CW_API_URL": "https://api-na.myconnectwise.net"
+      }
+    }
+  }
+}
+```
+
+Claude Desktop takes the same block in `claude_desktop_config.json`.
+
+### 5b. Add Tool to OpenWebUI
 
 1. Open OpenWebUI in your browser
 2. Navigate to **Settings → Admin Panel → Tools**
@@ -302,16 +346,19 @@ company/name like "%Tech%"
 
 ```
 ConnectWise-MCP-Server/
-├── connectwise_mcp.py      (MCP server implementation)
-├── bridge-server.js        (HTTP API bridge)
-├── connectwise_tools.py    (OpenWebUI tool)
-├── docker-compose.yml      (Multi-container setup)
-├── Dockerfile              (MCP server container)
-├── Dockerfile.bridge       (Bridge server container)
-├── requirements.txt        (Python dependencies)
-├── .env.example            (Environment template)
-├── setup.sh                (Management script)
-└── README.md               (This file)
+├── connectwise_mcp.py          (the whole server: tools, both transports)
+├── connectwise_tools.py        (OpenWebUI tool)
+├── test_connectwise_mcp.py     (offline test suite)
+├── conftest.py                 (mock ConnectWise fixtures)
+├── pytest.ini
+├── docker-compose.yml          (one service)
+├── Dockerfile
+├── requirements.txt            (pinned)
+├── requirements-dev.txt        (test only)
+├── .env.example
+├── Setup.sh                    (management script)
+├── test.sh                     (live deployment smoke check)
+└── README.md
 ```
 
 ## Management Commands
@@ -404,23 +451,25 @@ ConnectWise has API rate limits. If you encounter rate limiting:
 
 ## Development & Testing
 
-**Local Development:**
+**Tests** — no credentials, no network, no Docker. A `httpx.MockTransport` stands in for ConnectWise:
 
-MCP Server:
 ```bash
-cd ConnectWise-MCP-Server
+pip install -r requirements-dev.txt
+pytest
+```
+
+They cover the endpoint and query string each tool produces, the auth headers, error paths (400/401/404/429/500, malformed JSON), that errors never echo the private key, that every tool issues `GET` and nothing else, and that the module imports with no credentials set — the failure that prompted the 2.0.0 rewrite.
+
+**Running it locally:**
+
+```bash
 pip install -r requirements.txt
 export CW_COMPANY_ID=your_company_id
 export CW_PUBLIC_KEY=your_public_key
 export CW_PRIVATE_KEY=your_private_key
-python connectwise_mcp.py
-```
 
-Bridge Server:
-```bash
-npm install express cors
-export MCP_PORT=3002
-node bridge-server.js
+python connectwise_mcp.py                    # stdio, for MCP clients
+MCP_TRANSPORT=http python connectwise_mcp.py # HTTP on :3002, for OpenWebUI
 ```
 
 **Testing API Endpoints:**
@@ -445,15 +494,12 @@ curl -X POST http://localhost:3002/v1/tools/execute \
 
 ## Dependencies
 
-**Python packages (connectwise-mcp-server):**
-- mcp - Model Context Protocol framework
-- fastmcp - Fast MCP server implementation
-- httpx - Async HTTP client
-- pydantic - Data validation
+- `fastmcp` — MCP server framework; brings `mcp`, `starlette` and `uvicorn` with it
+- `httpx` — async HTTP client
 
-**Node.js packages (mcp-bridge):**
-- express - Web server framework
-- cors - CORS middleware
+Both are pinned with upper bounds in `requirements.txt`. That is deliberate: an unbounded `mcp>=1.0.0` is exactly what broke the previous release when a major version shipped. Test-only dependencies live in `requirements-dev.txt`.
+
+No Node.js. The bridge that needed it is gone.
 
 ## Resources
 
@@ -493,9 +539,20 @@ MIT License - See LICENSE file for details
 
 ## Version
 
-**Current Version:** 1.1.0
+**Current Version:** 2.0.0
 
 ### Changelog
+
+**Version 2.0.0 (Runs again)**
+- Fixed the server failing at import: `mcp>=1.0.0` resolved to 2.x, which removed the decorator API it was built on
+- Pinned all dependencies with upper bounds
+- Ported to FastMCP: tool schemas come from type hints, deleting ~740 lines of hand-written JSON schema and a ~190-line dispatcher
+- Removed the Node bridge — HTTP is served in-process, so no spawn per request, no `python`/`python3` mismatch, no missing MCP handshake
+- Collapsed two containers into one; the second never did anything but restart
+- Added stdio transport, so it works in Claude Code and Claude Desktop
+- Credentials are no longer required at import time
+- Added an offline test suite (51 tests, no credentials, no network)
+- All 30 tool names and the `/v1/tools/execute` response shape are unchanged
 
 **Version 1.1.0 (Enhanced Feature Set)**
 - Added IT Asset Management (configurations, configuration types, company sites)
