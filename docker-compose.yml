@@ -28,6 +28,10 @@ services:
       - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:?set MCP_AUTH_TOKEN in .env}
       - CW_MAX_RETRIES=${CW_MAX_RETRIES:-3}
       - CW_MAX_RECORDS=${CW_MAX_RECORDS:-1000}
+      # Empty means read-only, which is the default and the right default.
+      # Set to notes / notes,time / all in .env to opt in. See README.
+      - CW_ENABLE_WRITES=${CW_ENABLE_WRITES:-}
+      - CW_WRITE_DRY_RUN=${CW_WRITE_DRY_RUN:-false}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:3002/health').status==200 else 1)"]

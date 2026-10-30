@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Model Context Protocol (MCP) server giving AI agents read-only access to ConnectWise Manage. One Python process serves two transports:
+A Model Context Protocol (MCP) server giving AI agents access to ConnectWise Manage. **Read-only by default**; writes exist but must be switched on per category — see [Writes](#writes). One Python process serves two transports:
 
 ```
 ┌──────────────────┐  stdio  ┐
@@ -513,11 +513,56 @@ In OpenWebUI, add the same header in the tool's Valves.
 
 - Never commit `.env`, `.mcp.json` or `claude_desktop_config.json` — all three hold live API keys and all three are gitignored
 - Use an API-only member with the minimum required permissions
-- **Read-only:** no write operations are implemented; every tool issues `GET`, and a test enforces it
+- **Read-only unless enabled:** every read tool issues `GET`, enforced by a test. Write tools are not registered at all unless `CW_ENABLE_WRITES` names their category
 - Rotate API credentials regularly
 - Restrict IP access to the ConnectWise API where you can
 - Keep the HTTP port on a private network even with the token
 - Errors never echo the API key, and that is tested
+
+## Writes
+
+**This server is read-only by default and stays that way until you say otherwise.** Write tools are not merely refused when disabled — they are not registered, so they never appear in the tool list and a model cannot be talked into calling one it cannot see.
+
+Enable by category, not by boolean:
+
+```bash
+CW_ENABLE_WRITES=notes          # notes on tickets and companies
+CW_ENABLE_WRITES=notes,time     # ...and time entries
+CW_ENABLE_WRITES=all            # ...and creating tickets and changing any field
+```
+
+`CW_ENABLE_WRITES=true` is **not** valid. It enables nothing and logs a warning, because quietly granting every write because a string looked truthy is the worst reading of an ambiguous setting.
+
+| Category | Tools | Risk |
+|---|---|---|
+| `notes` | `add_ticket_note`, `add_company_note` | Low. A wrong note is embarrassing and easy to spot |
+| `time` | `create_time_entry` | Medium. Wrong time affects billing |
+| `tickets` | `create_ticket`, `update_ticket` | **High.** Status changes move work in and out of technicians' queues |
+
+### Before you turn any of it on
+
+**Use dry run first.** `CW_WRITE_DRY_RUN=true` logs what would be sent and returns it, without sending. Worth leaving on for the first day of any category.
+
+**Use a separate API member** with write rights, distinct from your read-only one. ConnectWise's own audit trail then tells you which changes came from here.
+
+**Notes default to internal.** `add_ticket_note` writes to internal analysis unless you pass `internal=False`. An AI-written note appearing in a client's ticket feed unannounced is a surprise worth opting into rather than out of.
+
+**`update_ticket` takes a field path, not an object**, because ConnectWise PATCH is JSON Patch:
+
+```
+update_ticket(ticket_id=42, path="status/id", value=5)
+  -> [{"op": "replace", "path": "status/id", "value": 5}]
+```
+
+Sending `{"status": {"id": 5}}` instead returns 200 and changes nothing — a failure that looks like a success. There is a test pinning the patch shape.
+
+**Writes are never retried on 5xx.** A 500 on a POST does not mean nothing happened; the note may have been created before the error surfaced. Retrying would duplicate it on a customer's ticket. A 429 *is* retried, because it is rejected before processing and cannot duplicate. Reads still retry 5xx as before.
+
+**Every write returns the record it created or changed**, and is logged in full at INFO, so the transcript shows exactly what was done rather than "ok".
+
+### Still worth deciding yourself
+
+Nothing here restricts writes to tickets the caller named explicitly rather than found via search — a model can pass any id. If that matters for your deployment, `notes` with `internal=True` is the conservative starting point, and `tickets` is the one to leave off longest.
 
 ## Reliability
 
@@ -600,11 +645,10 @@ No Node.js. The bridge that needed it is gone.
 
 ## Important Notes
 
-- This server provides **READ-ONLY** access to ConnectWise
-- No write operations are implemented
-- Designed for AI-assisted data retrieval and analysis
-- Respects ConnectWise API rate limits
-- Requires valid ConnectWise API credentials
+- **Read-only out of the box.** Write tools are not registered unless `CW_ENABLE_WRITES` names their category — see [Writes](#writes)
+- The HTTP transport requires a bearer token and refuses to start without one
+- Retries rate limits and transient errors; never retries a write on 5xx
+- Requires valid ConnectWise API credentials to call a tool, though not to start
 
 ## Contributing
 
@@ -629,9 +673,18 @@ MIT License - See LICENSE file for details
 
 ## Version
 
-**Current Version:** 2.2.0
+**Current Version:** 2.3.0
 
 ### Changelog
+
+**Version 2.3.0 (Opt-in writes)**
+- Added write tools, **off by default**: `add_ticket_note`, `add_company_note`, `create_time_entry`, `create_ticket`, `update_ticket`
+- Enabled per category via `CW_ENABLE_WRITES=notes|time|tickets|all`. Disabled categories are not registered, so the tools do not appear in the tool list at all. `true` is not a valid value and enables nothing
+- `CW_WRITE_DRY_RUN` logs and returns what would be sent, without sending
+- Writes are never retried on 5xx — a 500 on a POST does not mean nothing happened, and a duplicate note on a customer ticket is worse than an error. 429 is still retried, being rejected before processing
+- `update_ticket` sends JSON Patch, which is what ConnectWise actually expects; a plain object returns 200 and changes nothing
+- Ticket notes default to internal analysis rather than the customer-visible description
+- 125 tests
 
 **Version 2.2.0 (Wider read coverage)**
 - 21 new read-only tools, taking the total to 51: documents/attachments, schedule entries, SLAs, company and contact notes, company teams, ticket configurations, board teams/types/subtypes, procurement (purchase orders, line items, catalog, products, manufacturers, product types), project tickets/phases/team members, and departments

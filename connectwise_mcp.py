@@ -56,6 +56,70 @@ CW_MAX_RECORDS = int(os.getenv("CW_MAX_RECORDS", "1000"))
 # where the trust boundary is the process rather than the network.
 MCP_AUTH_TOKEN = os.getenv("MCP_AUTH_TOKEN")
 
+# ---------------------------------------------------------------------------
+# Writes
+#
+# Off unless switched on, per category, by name. Everything else in this file
+# is read-only and stays that way for a deployment that does not opt in -- the
+# write tools are not even registered, so a model cannot see them to try.
+#
+#   CW_ENABLE_WRITES=notes        ticket and company notes
+#   CW_ENABLE_WRITES=notes,time   ...and time entries
+#   CW_ENABLE_WRITES=all          ...and creating and updating tickets
+#
+# Granular rather than one boolean because the categories carry very different
+# risk. A wrong note is embarrassing; a wrong ticket update changes what a
+# technician sees as their work queue.
+# ---------------------------------------------------------------------------
+WRITE_CATEGORIES = frozenset({"notes", "time", "tickets"})
+CW_ENABLE_WRITES = os.getenv("CW_ENABLE_WRITES", "")
+
+# Log the request and return it without sending, for proving what a model would
+# have done before letting it do it.
+CW_WRITE_DRY_RUN = os.getenv("CW_WRITE_DRY_RUN", "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
+
+
+class WritesDisabledError(RuntimeError):
+    """A write tool was called while its category is switched off."""
+
+
+def enabled_writes() -> frozenset[str]:
+    """Which write categories are switched on. An empty set means read-only."""
+    raw = (CW_ENABLE_WRITES or "").strip().lower()
+    if not raw:
+        return frozenset()
+    if raw == "all":
+        return WRITE_CATEGORIES
+
+    asked = {part.strip() for part in raw.split(",") if part.strip()}
+    known = asked & WRITE_CATEGORIES
+    unknown = asked - WRITE_CATEGORIES
+    if unknown:
+        # Loudly: the likely cause is CW_ENABLE_WRITES=true, and silently
+        # staying read-only would look like the setting had been ignored.
+        logger.warning(
+            "CW_ENABLE_WRITES: ignoring unrecognised %s. Use a comma-separated "
+            "list of %s, or 'all'.",
+            ", ".join(sorted(unknown)),
+            ", ".join(sorted(WRITE_CATEGORIES)),
+        )
+    return frozenset(known)
+
+
+def _require_write(category: str) -> None:
+    """Second line of defence behind conditional registration."""
+    if category not in enabled_writes():
+        raise WritesDisabledError(
+            f"Writes in the '{category}' category are disabled. Set "
+            f"CW_ENABLE_WRITES to include '{category}' to allow this. "
+            "This server is read-only by default."
+        )
+
 
 class ConnectWiseError(RuntimeError):
     """A ConnectWise API call failed. Carries the endpoint and status."""
@@ -102,24 +166,67 @@ class ConnectWiseClient:
         logger.info("ConnectWise client initialised for company: %s", CW_COMPANY_ID)
 
     async def get(self, endpoint: str, params: dict | None = None) -> Any:
+        return await self._request("GET", endpoint, params=params)
+
+    async def post(self, endpoint: str, body: Any) -> Any:
+        return await self._request("POST", endpoint, json=body)
+
+    async def patch(self, endpoint: str, operations: list[dict]) -> Any:
+        """
+        ConnectWise PATCH is JSON Patch, not a partial object:
+
+            [{"op": "replace", "path": "status/id", "value": 5}]
+
+        Sending {"status": {"id": 5}} is accepted with a 200 and changes
+        nothing, which is the worst possible failure -- it looks like it worked.
+        """
+        return await self._request("PATCH", endpoint, json=operations)
+
+    async def _request(
+        self,
+        method: str,
+        endpoint: str,
+        params: dict | None = None,
+        json: Any = None,
+    ) -> Any:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        logger.info("GET %s params=%s", url, params or {})
+        idempotent = method == "GET"
+
+        if idempotent:
+            logger.info("GET %s params=%s", url, params or {})
+        else:
+            # Writes are logged in full at INFO. If something changes a
+            # customer's ticket, the transcript should say exactly what.
+            logger.info("%s %s body=%s", method, url, json)
 
         attempt = 0
         while True:
             attempt += 1
             try:
-                response = await self.client.get(url, params=params)
+                response = await self.client.request(
+                    method, url, params=params, json=json
+                )
             except httpx.HTTPError as e:
-                # Connection reset, DNS blip, read timeout. Worth one more go.
-                if attempt > CW_MAX_RETRIES:
+                # A transport error on a write is NOT safe to retry: the
+                # request may well have reached ConnectWise and created the
+                # record before the connection dropped, and a duplicate time
+                # entry or a second note on a customer ticket is worse than an
+                # error the caller can decide about.
+                if not idempotent or attempt > CW_MAX_RETRIES:
                     raise ConnectWiseError(
-                        f"Request to {endpoint} failed after {attempt} attempts: {e}"
+                        f"{method} {endpoint} failed after {attempt} attempt(s): {e}"
                     ) from e
                 await self._backoff(attempt, None)
                 continue
 
-            if response.status_code in RETRYABLE_STATUS and attempt <= CW_MAX_RETRIES:
+            # Same reasoning for 5xx on a write -- a 500 does not mean nothing
+            # happened. 429 is different: rejected before processing, so
+            # retrying it cannot duplicate anything.
+            retryable = (
+                RETRYABLE_STATUS if idempotent else frozenset({429})
+            )
+
+            if response.status_code in retryable and attempt <= CW_MAX_RETRIES:
                 logger.warning(
                     "ConnectWise %s on %s, retry %d of %d",
                     response.status_code,
@@ -132,6 +239,10 @@ class ConnectWiseClient:
 
             if response.is_error:
                 raise self._describe(endpoint, response, attempt)
+
+            # A 204, or a 201 with no body, is a success with nothing to parse.
+            if not response.content:
+                return {"status": response.status_code, "endpoint": endpoint}
 
             try:
                 return response.json()
@@ -1130,6 +1241,202 @@ async def get_departments(
     fetchAll: bool = False,
 ) -> Any:
     return await _search("system/departments", conditions, orderBy, page, pageSize, fetchAll)
+
+
+# ---------------------------------------------------------------------------
+# Write tools
+#
+# Defined unconditionally so they are importable and testable, but REGISTERED
+# only when their category is enabled -- a read-only deployment does not expose
+# them in the tool list at all, so a model cannot see one to try. _require_write
+# inside each is the second line of defence for a direct call.
+#
+# Every one returns what ConnectWise created or changed, so the result in the
+# transcript is the record rather than "ok".
+# ---------------------------------------------------------------------------
+
+
+async def _write(category: str, verb: str, endpoint: str, payload: Any) -> Any:
+    """Shared gate, dry-run and dispatch for every write."""
+    _require_write(category)
+
+    if CW_WRITE_DRY_RUN:
+        logger.warning("DRY RUN, not sent: %s %s %s", verb, endpoint, payload)
+        return {
+            "dryRun": True,
+            "wouldSend": {"method": verb, "endpoint": endpoint, "body": payload},
+        }
+
+    client = get_client()
+    if verb == "POST":
+        return await client.post(endpoint, payload)
+    return await client.patch(endpoint, payload)
+
+
+# --- notes -----------------------------------------------------------------
+
+
+async def add_ticket_note(
+    ticket_id: int,
+    text: str,
+    internal: bool = True,
+    resolution: bool = False,
+) -> Any:
+    """
+    Add a note to a service ticket.
+
+    internal defaults to True so a note goes to internal analysis rather than
+    the customer-visible description. An AI-written note appearing in a
+    client's ticket feed unannounced is the kind of surprise worth opting into
+    rather than out of.
+    """
+    body = {
+        "text": text,
+        "detailDescriptionFlag": not internal and not resolution,
+        "internalAnalysisFlag": internal,
+        "resolutionFlag": resolution,
+    }
+    return await _write("notes", "POST", f"service/tickets/{ticket_id}/notes", body)
+
+
+async def add_company_note(company_id: int, text: str) -> Any:
+    """Add a note to a company record."""
+    return await _write(
+        "notes", "POST", f"company/companies/{company_id}/notes", {"text": text}
+    )
+
+
+# --- time ------------------------------------------------------------------
+
+
+async def create_time_entry(
+    ticket_id: int,
+    actual_hours: float,
+    notes: str,
+    member_identifier: str | None = None,
+    billable_option: str = "Billable",
+    time_start: str | None = None,
+) -> Any:
+    """
+    Log time against a service ticket.
+
+    billable_option is one of Billable, DoNotBill, NoCharge, NoDefault.
+    member_identifier defaults to the API member if omitted, which is rarely
+    what you want -- time should usually be logged against the person who did
+    the work, not the integration account.
+    """
+    body: dict[str, Any] = {
+        "chargeToId": ticket_id,
+        "chargeToType": "ServiceTicket",
+        "actualHours": actual_hours,
+        "notes": notes,
+        "billableOption": billable_option,
+    }
+    if member_identifier:
+        body["member"] = {"identifier": member_identifier}
+    if time_start:
+        body["timeStart"] = time_start
+    return await _write("time", "POST", "time/entries", body)
+
+
+# --- tickets ---------------------------------------------------------------
+
+
+async def create_ticket(
+    summary: str,
+    company_id: int,
+    board_id: int,
+    initial_description: str | None = None,
+    contact_id: int | None = None,
+    priority_id: int | None = None,
+) -> Any:
+    """
+    Create a service ticket.
+
+    summary is the ticket title and is what a technician sees in a queue.
+    board_id decides whose queue -- get it from connectwise_get_service_boards.
+    """
+    body: dict[str, Any] = {
+        "summary": summary,
+        "company": {"id": company_id},
+        "board": {"id": board_id},
+    }
+    if initial_description:
+        body["initialDescription"] = initial_description
+    if contact_id:
+        body["contact"] = {"id": contact_id}
+    if priority_id:
+        body["priority"] = {"id": priority_id}
+    return await _write("tickets", "POST", "service/tickets", body)
+
+
+async def update_ticket(
+    ticket_id: int,
+    path: str,
+    value: Any,
+    operation: str = "replace",
+) -> Any:
+    """
+    Change one field on a ticket, via JSON Patch.
+
+    path is a ConnectWise field path such as 'status/id', 'summary',
+    'priority/id' or 'owner/identifier'. operation is replace, add or remove.
+
+    Worth knowing before using this to close tickets: changing status is how
+    work appears and disappears from a technician's queue, and a wrong status
+    id is silently accepted.
+    """
+    if operation not in ("add", "replace", "remove"):
+        raise ValueError(
+            f"operation must be add, replace or remove, not {operation!r}"
+        )
+    ops = [{"op": operation, "path": path, "value": value}]
+    return await _write("tickets", "PATCH", f"service/tickets/{ticket_id}", ops)
+
+
+# Registration, by category. Nothing below runs for a read-only deployment.
+_WRITE_TOOLS: dict[str, list[tuple[str, Any, str]]] = {
+    "notes": [
+        ("connectwise_add_ticket_note", add_ticket_note, "Add a note to a service ticket"),
+        ("connectwise_add_company_note", add_company_note, "Add a note to a company record"),
+    ],
+    "time": [
+        ("connectwise_create_time_entry", create_time_entry, "Log time against a service ticket"),
+    ],
+    "tickets": [
+        ("connectwise_create_ticket", create_ticket, "Create a service ticket"),
+        (
+            "connectwise_update_ticket",
+            update_ticket,
+            "Change one field on a ticket via JSON Patch (path, value, operation)",
+        ),
+    ],
+}
+
+
+def register_write_tools() -> list[str]:
+    """Register the enabled write tools. Returns the names registered."""
+    active = enabled_writes()
+    registered: list[str] = []
+    for category, tools in _WRITE_TOOLS.items():
+        if category not in active:
+            continue
+        for name, fn, description in tools:
+            mcp.add_tool(mcp.tool(name=name, description=description)(fn))
+            registered.append(name)
+
+    if registered:
+        logger.warning(
+            "WRITES ENABLED (%s): %s. This server can now change ConnectWise data.",
+            ", ".join(sorted(active)),
+            ", ".join(registered),
+        )
+        if CW_WRITE_DRY_RUN:
+            logger.warning("CW_WRITE_DRY_RUN is on: writes are logged, not sent.")
+    return registered
+
+
+register_write_tools()
 
 
 # ---------------------------------------------------------------------------
