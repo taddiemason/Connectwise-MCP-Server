@@ -290,6 +290,34 @@ Expected response:
 **Service Desk Tools:**
 - `get_service_boards()` - Get all service boards
 - `get_board_statuses()` - Get statuses for a specific board
+- `get_board_teams()` - Teams defined on a board
+- `get_board_types()` / `get_board_subtypes()` - Ticket types and subtypes on a board
+- `get_ticket_configurations()` - Which IT assets a ticket is actually about
+- `get_slas()` - Service level agreements and their targets
+
+**Documents:**
+- `get_documents(recordType, recordId)` - Attachments on a record. Both arguments are required — `/system/documents` returns 400 without them. `recordType` is `Ticket`, `Company`, `Contact`, `Opportunity`, `Project`, `Agreement`, `Configuration` and so on. Metadata only, not file contents.
+
+**Scheduling:**
+- `get_schedule_entries()` - Scheduled work across the business, filterable by member or date
+
+**Notes:**
+- `get_company_notes()` / `get_contact_notes()` - Notes on a company or contact
+- `get_company_note_types()` - Note type reference data
+- `get_company_teams()` - Who is assigned to a company
+
+**Procurement:**
+- `get_purchase_orders()` / `get_purchase_order_line_items()`
+- `get_product_catalog()` - What can be sold
+- `get_products()` - What has been sold, on tickets, projects and agreements
+- `get_manufacturers()` / `get_product_types()`
+
+**Projects:**
+- `get_project_tickets()` - Project tickets, which are separate from service tickets
+- `get_project_phases()` / `get_project_team_members()`
+
+**System:**
+- `get_departments()`
 
 Collection tools take `conditions`, `orderBy`, `page`, `pageSize` and `fetchAll`. See [Reliability](#reliability) for what `fetchAll` is for.
 
@@ -601,9 +629,17 @@ MIT License - See LICENSE file for details
 
 ## Version
 
-**Current Version:** 2.1.0
+**Current Version:** 2.2.0
 
 ### Changelog
+
+**Version 2.2.0 (Wider read coverage)**
+- 21 new read-only tools, taking the total to 51: documents/attachments, schedule entries, SLAs, company and contact notes, company teams, ticket configurations, board teams/types/subtypes, procurement (purchase orders, line items, catalog, products, manufacturers, product types), project tickets/phases/team members, and departments
+- Endpoint paths were taken from the [ConnectWiseManageAPI](https://github.com/christaylorcodes/ConnectWiseManageAPI) module rather than guessed. Several are not what you would assume — `/service/SLAs` is capitalised, product types are at `/procurement/types`, note types at `/company/noteTypes` — and each is pinned by a test
+- `get_documents` requires `recordType` and `recordId`, because `/system/documents` returns 400 without them
+- 102 tests
+
+**Not included:** knowledge base articles. No endpoint for them appears in the reference used for everything else here, and a guessed path would 404 only against a live instance. Worth adding once the real path is confirmed.
 
 **Version 2.1.0 (Hardening)**
 - **The HTTP transport now requires a bearer token** and refuses to start without one. It previously served the entire ConnectWise instance to anyone who could reach the port

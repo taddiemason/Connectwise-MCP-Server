@@ -18,6 +18,9 @@ import connectwise_mcp as cw
 # No module-level asyncio mark: pytest.ini sets asyncio_mode = auto, which picks
 # up async tests on its own and leaves the sync ones alone.
 
+# 30 from the original read-only set, plus 21 added in Stage 4.
+EXPECTED_TOOL_COUNT = 51
+
 
 # --- the regression that started all of this -------------------------------
 
@@ -36,9 +39,13 @@ def test_module_imports_without_credentials() -> None:
     assert cw.mcp is not None
 
 
-async def test_all_thirty_tools_are_registered() -> None:
+async def test_every_tool_is_registered() -> None:
+    """
+    Hardcoded on purpose: this catches a tool silently dropped by a bad merge
+    or a decorator lost in a refactor. Update it deliberately when adding one.
+    """
     tools = await cw.mcp.list_tools()
-    assert len(tools) == 30
+    assert len(tools) == EXPECTED_TOOL_COUNT
 
 
 async def test_tool_names_are_unchanged() -> None:
@@ -127,6 +134,51 @@ async def test_id_scoped_endpoints(api, call, endpoint: str) -> None:
     """The id has to land in the path, not the query string."""
     await call()
     assert api.path == endpoint
+
+
+@pytest.mark.parametrize(
+    "call, endpoint",
+    [
+        # Several of these are not what you would guess, which is why they were
+        # taken from the ConnectWiseManageAPI module rather than invented. A
+        # wrong path only shows up as a 404 against a live instance, and these
+        # tests are the nearest thing to catching it before then.
+        (lambda: cw.get_slas(), "service/SLAs"),  # capitalised
+        (lambda: cw.get_product_types(), "procurement/types"),  # not producttypes
+        (lambda: cw.get_company_note_types(), "company/noteTypes"),  # camelCase
+        (lambda: cw.get_project_team_members(7), "project/projects/7/teamMembers"),
+        (lambda: cw.get_schedule_entries(), "schedule/entries"),
+        (lambda: cw.get_purchase_orders(), "procurement/purchaseorders"),
+        (lambda: cw.get_purchase_order_line_items(3), "procurement/purchaseorders/3/lineitems"),
+        (lambda: cw.get_product_catalog(), "procurement/catalog"),
+        (lambda: cw.get_products(), "procurement/products"),
+        (lambda: cw.get_manufacturers(), "procurement/manufacturers"),
+        (lambda: cw.get_company_notes(5), "company/companies/5/notes"),
+        (lambda: cw.get_contact_notes(5), "company/contacts/5/notes"),
+        (lambda: cw.get_company_teams(5), "company/companies/5/teams"),
+        (lambda: cw.get_ticket_configurations(9), "service/tickets/9/configurations"),
+        (lambda: cw.get_board_teams(2), "service/boards/2/teams"),
+        (lambda: cw.get_board_types(2), "service/boards/2/types"),
+        (lambda: cw.get_board_subtypes(2), "service/boards/2/subtypes"),
+        (lambda: cw.get_project_tickets(), "project/tickets"),
+        (lambda: cw.get_project_phases(4), "project/projects/4/phases"),
+        (lambda: cw.get_departments(), "system/departments"),
+    ],
+)
+async def test_stage_four_endpoints(api, call, endpoint: str) -> None:
+    await call()
+    assert api.path == endpoint
+
+
+async def test_documents_require_record_type_and_id(api) -> None:
+    """
+    /system/documents is entity-scoped: without both parameters ConnectWise
+    returns 400 rather than a list, so they are required rather than optional.
+    """
+    await cw.get_documents(recordType="Ticket", recordId=1234)
+    assert api.path == "system/documents"
+    assert api.params["recordType"] == "Ticket"
+    assert api.params["recordId"] == "1234"
 
 
 # --- query parameters ------------------------------------------------------

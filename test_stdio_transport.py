@@ -17,6 +17,8 @@ import pytest
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 
+from test_connectwise_mcp import EXPECTED_TOOL_COUNT
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -49,7 +51,7 @@ async def test_handshake_over_real_pipes(stdio_client: Client) -> None:
     """
     async with stdio_client as c:
         tools = await c.list_tools()
-    assert len(tools) == 30
+    assert len(tools) == EXPECTED_TOOL_COUNT
 
 
 async def test_tools_list_without_credentials(stdio_client: Client) -> None:
@@ -87,4 +89,4 @@ async def test_tool_error_does_not_kill_the_session(stdio_client: Client) -> Non
         assert "credentials" in str(e.value).lower()
 
         # Still alive and answering.
-        assert len(await c.list_tools()) == 30
+        assert len(await c.list_tools()) == EXPECTED_TOOL_COUNT

@@ -742,6 +742,397 @@ async def get_configuration_types(
 
 
 # ---------------------------------------------------------------------------
+# Stage 4 additions.
+#
+# Paths here were taken from the ConnectWiseManageAPI PowerShell module rather
+# than guessed, because several are not what you would assume: SLAs is
+# capitalised, product types live at /procurement/types rather than
+# /procurement/producttypes, note types at /company/noteTypes, and project team
+# members at /teamMembers. A wrong path is a tool that 404s on a live instance
+# and nowhere else, since none of this can be verified against mocks.
+# ---------------------------------------------------------------------------
+
+# --- Documents -------------------------------------------------------------
+
+
+@mcp.tool(
+    name="connectwise_get_documents",
+    description=(
+        "List documents and attachments linked to a record. recordType is the "
+        "kind of record, e.g. Ticket, Company, Contact, Opportunity, Project, "
+        "Agreement, Configuration; recordId is its id. Returns metadata only, "
+        "not file contents."
+    ),
+)
+async def get_documents(
+    recordType: str,
+    recordId: int,
+    page: int | None = None,
+    pageSize: int = 25,
+) -> Any:
+    # Both are mandatory: /system/documents without them is a 400, not a list
+    # of every document in the instance.
+    params: dict[str, Any] = {"recordType": recordType, "recordId": recordId}
+    if page is not None:
+        params["page"] = page
+    params["pageSize"] = pageSize
+    return await get_client().get("system/documents", params=params)
+
+
+# --- Scheduling and SLAs ---------------------------------------------------
+
+
+@mcp.tool(
+    name="connectwise_get_schedule_entries",
+    description=(
+        "Search scheduled work across the business. Filter by member, date or "
+        "object with conditions, e.g. member/identifier=\"jsmith\"."
+    ),
+)
+async def get_schedule_entries(
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search("schedule/entries", conditions, orderBy, page, pageSize, fetchAll)
+
+
+@mcp.tool(
+    name="connectwise_get_slas",
+    description="Get service level agreements and their response/resolution targets",
+)
+async def get_slas(
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    # Capital SLAs -- ConnectWise is case-sensitive here.
+    return await _search("service/SLAs", conditions, orderBy, page, pageSize, fetchAll)
+
+
+# --- Notes -----------------------------------------------------------------
+
+
+@mcp.tool(
+    name="connectwise_get_company_notes",
+    description="Get notes recorded against a specific company",
+)
+async def get_company_notes(
+    company_id: int,
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search(
+        f"company/companies/{company_id}/notes", conditions, orderBy, page, pageSize, fetchAll
+    )
+
+
+@mcp.tool(
+    name="connectwise_get_contact_notes",
+    description="Get notes recorded against a specific contact",
+)
+async def get_contact_notes(
+    contact_id: int,
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search(
+        f"company/contacts/{contact_id}/notes", conditions, orderBy, page, pageSize, fetchAll
+    )
+
+
+@mcp.tool(
+    name="connectwise_get_company_note_types",
+    description="Get all company note types",
+)
+async def get_company_note_types(
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search("company/noteTypes", conditions, orderBy, page, pageSize, fetchAll)
+
+
+@mcp.tool(
+    name="connectwise_get_company_teams",
+    description="Get the team members assigned to a specific company",
+)
+async def get_company_teams(
+    company_id: int,
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search(
+        f"company/companies/{company_id}/teams", conditions, orderBy, page, pageSize, fetchAll
+    )
+
+
+# --- Service desk detail ---------------------------------------------------
+
+
+@mcp.tool(
+    name="connectwise_get_ticket_configurations",
+    description=(
+        "Get the IT configurations/assets attached to a specific ticket -- "
+        "which machines a problem is actually about"
+    ),
+)
+async def get_ticket_configurations(
+    ticket_id: int,
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search(
+        f"service/tickets/{ticket_id}/configurations", conditions, orderBy, page, pageSize, fetchAll
+    )
+
+
+@mcp.tool(
+    name="connectwise_get_board_teams",
+    description="Get the teams defined on a specific service board",
+)
+async def get_board_teams(
+    board_id: int,
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search(
+        f"service/boards/{board_id}/teams", conditions, orderBy, page, pageSize, fetchAll
+    )
+
+
+@mcp.tool(
+    name="connectwise_get_board_types",
+    description="Get the ticket types defined on a specific service board",
+)
+async def get_board_types(
+    board_id: int,
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search(
+        f"service/boards/{board_id}/types", conditions, orderBy, page, pageSize, fetchAll
+    )
+
+
+@mcp.tool(
+    name="connectwise_get_board_subtypes",
+    description="Get the ticket subtypes defined on a specific service board",
+)
+async def get_board_subtypes(
+    board_id: int,
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search(
+        f"service/boards/{board_id}/subtypes", conditions, orderBy, page, pageSize, fetchAll
+    )
+
+
+# --- Procurement -----------------------------------------------------------
+
+
+@mcp.tool(
+    name="connectwise_get_purchase_orders",
+    description="Search purchase orders. Supports filtering with conditions.",
+)
+async def get_purchase_orders(
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search(
+        "procurement/purchaseorders", conditions, orderBy, page, pageSize, fetchAll
+    )
+
+
+@mcp.tool(
+    name="connectwise_get_purchase_order_line_items",
+    description="Get the line items on a specific purchase order",
+)
+async def get_purchase_order_line_items(
+    purchase_order_id: int,
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search(
+        f"procurement/purchaseorders/{purchase_order_id}/lineitems",
+        conditions,
+        orderBy,
+        page,
+        pageSize,
+        fetchAll,
+    )
+
+
+@mcp.tool(
+    name="connectwise_get_product_catalog",
+    description="Search the product catalog -- what can be sold, not what has been",
+)
+async def get_product_catalog(
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search("procurement/catalog", conditions, orderBy, page, pageSize, fetchAll)
+
+
+@mcp.tool(
+    name="connectwise_get_products",
+    description=(
+        "Search product items actually sold -- those placed on tickets, "
+        "projects, opportunities and agreements"
+    ),
+)
+async def get_products(
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search("procurement/products", conditions, orderBy, page, pageSize, fetchAll)
+
+
+@mcp.tool(
+    name="connectwise_get_manufacturers",
+    description="Get all manufacturers used in the product catalog",
+)
+async def get_manufacturers(
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search(
+        "procurement/manufacturers", conditions, orderBy, page, pageSize, fetchAll
+    )
+
+
+@mcp.tool(
+    name="connectwise_get_product_types",
+    description="Get all product types for categorising the catalog",
+)
+async def get_product_types(
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    # /procurement/types, not /procurement/producttypes.
+    return await _search("procurement/types", conditions, orderBy, page, pageSize, fetchAll)
+
+
+# --- Projects --------------------------------------------------------------
+
+
+@mcp.tool(
+    name="connectwise_get_project_tickets",
+    description="Search project tickets. These are separate from service tickets.",
+)
+async def get_project_tickets(
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search("project/tickets", conditions, orderBy, page, pageSize, fetchAll)
+
+
+@mcp.tool(
+    name="connectwise_get_project_phases",
+    description="Get the phases of a specific project",
+)
+async def get_project_phases(
+    project_id: int,
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search(
+        f"project/projects/{project_id}/phases", conditions, orderBy, page, pageSize, fetchAll
+    )
+
+
+@mcp.tool(
+    name="connectwise_get_project_team_members",
+    description="Get the team members assigned to a specific project",
+)
+async def get_project_team_members(
+    project_id: int,
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search(
+        f"project/projects/{project_id}/teamMembers",
+        conditions,
+        orderBy,
+        page,
+        pageSize,
+        fetchAll,
+    )
+
+
+# --- System ----------------------------------------------------------------
+
+
+@mcp.tool(
+    name="connectwise_get_departments",
+    description="Get all departments for organising members",
+)
+async def get_departments(
+    conditions: str | None = None,
+    orderBy: str | None = None,
+    page: int | None = None,
+    pageSize: int = 25,
+    fetchAll: bool = False,
+) -> Any:
+    return await _search("system/departments", conditions, orderBy, page, pageSize, fetchAll)
+
+
+# ---------------------------------------------------------------------------
 # HTTP compatibility routes
 #
 # The Node bridge is gone, but connectwise_tools.py and any OpenWebUI install
