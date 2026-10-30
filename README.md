@@ -291,7 +291,7 @@ Expected response:
 - `get_service_boards()` - Get all service boards
 - `get_board_statuses()` - Get statuses for a specific board
 
-All tools support pagination and ConnectWise condition syntax for advanced filtering.
+Collection tools take `conditions`, `orderBy`, `page`, `pageSize` and `fetchAll`. See [Reliability](#reliability) for what `fetchAll` is for.
 
 ## Usage Examples
 
@@ -454,15 +454,62 @@ ConnectWise has API rate limits. If you encounter rate limiting:
 - Add delays between requests
 - Check ConnectWise API documentation for current limits
 
-## Security Best Practices
+## Security
 
-- Never commit `.env` file with real credentials to version control
-- Use API-only member accounts with minimum required permissions
-- **Read-only access:** This server is designed for read-only operations only
-- Regularly rotate API credentials
-- Limit IP access to ConnectWise API if possible
-- Run bridge server in private network when possible
-- Monitor API usage and set quotas
+### The HTTP transport requires a bearer token
+
+`MCP_AUTH_TOKEN` is mandatory — **the server refuses to start on HTTP without it** rather than coming up wide open. Generate one:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Callers send it on every request:
+
+```bash
+curl -X POST http://localhost:3002/v1/tools/execute \
+  -H "Authorization: Bearer $MCP_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"tool_name": "connectwise_get_companies", "arguments": {"pageSize": 5}}'
+```
+
+In OpenWebUI, add the same header in the tool's Valves.
+
+`/health` stays unauthenticated so the container healthcheck works; it returns a fixed status string and nothing about your instance. Tokens are compared with `hmac.compare_digest`, so a wrong one cannot be narrowed down by timing.
+
+**The stdio transport has no token** and does not need one — the trust boundary there is the process, not the network.
+
+> Before this, port 3002 answered anyone who could reach it with your entire ConnectWise instance: every client's tickets, contacts, agreements and invoices, no credential required. If you have been running the previous version on a reachable interface, treat that as exposure and rotate the ConnectWise API keys.
+
+### The rest
+
+- Never commit `.env`, `.mcp.json` or `claude_desktop_config.json` — all three hold live API keys and all three are gitignored
+- Use an API-only member with the minimum required permissions
+- **Read-only:** no write operations are implemented; every tool issues `GET`, and a test enforces it
+- Rotate API credentials regularly
+- Restrict IP access to the ConnectWise API where you can
+- Keep the HTTP port on a private network even with the token
+- Errors never echo the API key, and that is tested
+
+## Reliability
+
+**Retries.** ConnectWise rate-limits. A 429 or a 5xx is retried `CW_MAX_RETRIES` times (default 3) with exponential backoff, honouring `Retry-After` when ConnectWise sends it. Client errors — 400, 401, 403, 404 — are *not* retried, because repeating them only burns the rate limit. Without this a 429 surfaced as a failed tool call, which reads to a model as "that data does not exist" rather than "ask again shortly".
+
+**Pagination.** Collection tools take `fetchAll`:
+
+```
+get_tickets(conditions='status/name="New"', fetchAll=True)
+```
+
+Off by default, a query matching 400 tickets returns the first 25 and says nothing about the rest — and "25" is a wrong answer rather than a partial one. `fetchAll` walks every page, capped at `CW_MAX_RECORDS` (default 1000) so "every ticket" cannot become fifty thousand records and a rate-limit ban. The result is still a bare array either way.
+
+**Error messages** name the endpoint, the status, and what to do:
+
+```
+ConnectWise service/tickets [401]: authentication was rejected. Check
+CW_PUBLIC_KEY and CW_PRIVATE_KEY, that CW_COMPANY_ID matches the instance,
+and that the API member has read rights to this area. Body: ...
+```
 
 ## Development & Testing
 
@@ -554,9 +601,16 @@ MIT License - See LICENSE file for details
 
 ## Version
 
-**Current Version:** 2.0.0
+**Current Version:** 2.1.0
 
 ### Changelog
+
+**Version 2.1.0 (Hardening)**
+- **The HTTP transport now requires a bearer token** and refuses to start without one. It previously served the entire ConnectWise instance to anyone who could reach the port
+- Retries 429 and 5xx with exponential backoff, honouring `Retry-After`; client errors are not retried
+- Added `fetchAll` to collection tools, capped by `CW_MAX_RECORDS`, so a large result set cannot be silently truncated to page one
+- Error messages name the endpoint, the status and the likely fix
+- 81 tests
 
 **Version 2.0.0 (Runs again)**
 - Fixed the server failing at import: `mcp>=1.0.0` resolved to 2.x, which removed the decorator API it was built on

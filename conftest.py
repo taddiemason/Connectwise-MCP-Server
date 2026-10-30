@@ -21,6 +21,12 @@ class RecordingApi:
         self.status = 200
         self.payload: object = [{"id": 1, "name": "stub"}]
         self.body: str | None = None
+        self.headers: dict[str, str] = {}
+        # Statuses to return before falling back to `status`, one per call.
+        # Lets a test say "fail twice with 429, then succeed".
+        self.status_sequence: list[int] = []
+        # Pages keyed by the `page` query parameter, for fetchAll tests.
+        self.pages: dict[str, object] | None = None
 
     @property
     def last(self) -> httpx.Request:
@@ -38,9 +44,25 @@ class RecordingApi:
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
+
+        status = self.status_sequence.pop(0) if self.status_sequence else self.status
+
+        if self.pages is not None:
+            page = dict(request.url.params).get("page", "1")
+            return httpx.Response(status, json=self.pages.get(page, []))
+
         if self.body is not None:
-            return httpx.Response(self.status, text=self.body)
-        return httpx.Response(self.status, json=self.payload)
+            return httpx.Response(status, text=self.body, headers=self.headers)
+        return httpx.Response(status, json=self.payload, headers=self.headers)
+
+
+@pytest.fixture(autouse=True)
+def no_real_sleeping(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Retry backoff is real seconds. Without this the retry tests alone would add
+    the better part of a minute, and a slow suite is a suite people stop running.
+    """
+    monkeypatch.setattr(cw, "CW_RETRY_BASE_DELAY", 0.0)
 
 
 @pytest.fixture

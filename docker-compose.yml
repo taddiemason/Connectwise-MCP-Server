@@ -23,6 +23,11 @@ services:
       # which is what Claude Code and Claude Desktop want.
       - MCP_TRANSPORT=http
       - MCP_PORT=3002
+      # Required. The container refuses to start without it rather than serving
+      # the whole ConnectWise instance to anyone who can reach the port.
+      - MCP_AUTH_TOKEN=${MCP_AUTH_TOKEN:?set MCP_AUTH_TOKEN in .env}
+      - CW_MAX_RETRIES=${CW_MAX_RETRIES:-3}
+      - CW_MAX_RECORDS=${CW_MAX_RECORDS:-1000}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:3002/health').status==200 else 1)"]

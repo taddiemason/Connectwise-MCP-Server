@@ -66,7 +66,13 @@ async def test_parameter_names_survive_the_wire(stdio_client: Client) -> None:
     tool = next(t for t in tools if t.name == "connectwise_get_tickets")
     # input_schema, not inputSchema -- the latter is deprecated in MCP SDK v2.
     schema = tool.input_schema
-    assert set(schema["properties"]) == {"conditions", "orderBy", "page", "pageSize"}
+    assert set(schema["properties"]) == {
+        "conditions",
+        "orderBy",
+        "page",
+        "pageSize",
+        "fetchAll",
+    }
 
 
 async def test_tool_error_does_not_kill_the_session(stdio_client: Client) -> None:
